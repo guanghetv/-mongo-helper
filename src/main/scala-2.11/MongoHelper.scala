@@ -13,8 +13,10 @@ import org.mongodb.scala.bson.conversions.Bson
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
-class MongoDB(host: String, port: Int, database: String) {
-  val client: MongoClient = MongoClient(s"mongodb://$host:$port")
+class MongoDB(connStr: String, database: String = "") {
+  val client: MongoClient = MongoClient(s"mongodb://$connStr")
+
+//  val client: MongoClient = MongoClient(s"mongodb://$host:$port")
   val db = client.getDatabase(database)
   var collection: MongoCollection[Document] = null
 
@@ -40,9 +42,9 @@ class MongoDB(host: String, port: Int, database: String) {
 
 object MongoDB {
   var instance: MongoDB = null
-  def apply(host: String, port: Int, database: String) = {
+  def apply(connStr: String, database: String) = {
     if (instance == null) {
-      instance = new MongoDB(host, port, database)
+      instance = new MongoDB(connStr, database)
     }
     instance
   }
