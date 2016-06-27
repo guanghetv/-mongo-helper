@@ -20,6 +20,20 @@ class MongoDB(connStr: String, database: String = "") {
   val db = client.getDatabase(database)
   var collection: MongoCollection[Document] = null
 
+  // config
+  var batchSize = 0
+  var seconds = 0
+  var opTime: Long = System.currentTimeMillis / 1000
+
+  // cache
+  var cache: List[Document] = List[Document]()
+
+  def config(batchSize: Int, seconds: Int) = {
+    this.batchSize= batchSize
+    this.seconds = seconds
+    this.opTime= System.currentTimeMillis / 1000 + seconds
+  }
+
   def selectCollection(col: String): MongoCollection[Document] = {
     collection = db.getCollection(col)
     collection
@@ -30,7 +44,16 @@ class MongoDB(connStr: String, database: String = "") {
 
     val ch = parse(json).children
     val docs: IndexedSeq[Document] = ch.map(d => Document(compact(render(d)))).toIndexedSeq
-    collection.insertMany(docs).results()
+    cache = cache ++ docs
+
+     // check
+    if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
+      collection.insertMany(cache).results()
+
+      // clear cache
+      cache = List[Document]()
+      opTime = System.currentTimeMillis / 1000 + seconds
+    }
   }
 
   def findPrint(filter: Bson) = {
