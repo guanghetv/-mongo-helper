@@ -6,15 +6,29 @@ package com.guanghe
 
 import java.util.concurrent.TimeUnit
 
+import com.mongodb.ConnectionString
+import com.mongodb.connection.ConnectionPoolSettings
 import org.json4s.native.JsonMethods._
 import org.mongodb.scala._
 import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.connection.ClusterSettings
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 class MongoDB(connStr: String, database: String = "") {
-  val client: MongoClient = MongoClient(s"mongodb://$connStr")
+  val poolSettings = ConnectionPoolSettings.builder().maxSize(500).minSize(50).maxWaitQueueSize(1000).build()
+
+  val clusterSettings: ClusterSettings = ClusterSettings.builder()
+    .applyConnectionString(new ConnectionString(s"mongodb://$connStr")).build()
+
+  val settings: MongoClientSettings = MongoClientSettings.builder()
+    .connectionPoolSettings(poolSettings)
+    .clusterSettings(clusterSettings).build()
+
+  val client: MongoClient = MongoClient(settings)
+
+//  val client: MongoClient = MongoClient(s"mongodb://$connStr")
 
 //  val client: MongoClient = MongoClient(s"mongodb://$host:$port")
   val db = client.getDatabase(database)

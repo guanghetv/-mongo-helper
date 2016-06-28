@@ -6,7 +6,7 @@ object Main extends App {
 
   val mongo = MongoDB("10.8.8.8:27017", "test")
 
-  mongo.config(2, 20)
+  mongo.config(3, 2)
   mongo.selectCollection("test")
 
   // test json(array)
