@@ -11,20 +11,24 @@ import com.mongodb.connection.ConnectionPoolSettings
 import org.json4s.native.JsonMethods._
 import org.mongodb.scala._
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.connection.ClusterSettings
+import org.mongodb.scala.connection._
+import org.mongodb.scala.bson.codecs.DEFAULT_CODEC_REGISTRY
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 class MongoDB(connStr: String, database: String = "") {
-  val poolSettings = ConnectionPoolSettings.builder().maxSize(500).minSize(50).maxWaitQueueSize(1000).build()
-
-  val clusterSettings: ClusterSettings = ClusterSettings.builder()
-    .applyConnectionString(new ConnectionString(s"mongodb://$connStr")).build()
-
-  val settings: MongoClientSettings = MongoClientSettings.builder()
-    .connectionPoolSettings(poolSettings)
-    .clusterSettings(clusterSettings).build()
+  val connectionString = new ConnectionString(connStr)
+  val settings = MongoClientSettings.builder()
+    .codecRegistry(DEFAULT_CODEC_REGISTRY)
+    .clusterSettings(ClusterSettings.builder().applyConnectionString(connectionString).build())
+    .connectionPoolSettings(ConnectionPoolSettings.builder()
+      .minSize(50).maxSize(500).maxWaitQueueSize(1000).applyConnectionString(connectionString).build())
+    .serverSettings(ServerSettings.builder().build())
+    .credentialList(connectionString.getCredentialList)
+    .sslSettings(SslSettings.builder().applyConnectionString(connectionString).build())
+    .socketSettings(SocketSettings.builder().applyConnectionString(connectionString).build())
+    .build()
 
   val client: MongoClient = MongoClient(settings)
 
@@ -99,7 +103,7 @@ object Helpers {
 
     def results(): Seq[C] = {
       try {
-        Await.result(observable.toFuture(), Duration(10, TimeUnit.SECONDS))
+        Await.result(observable.toFuture(), Duration(30, TimeUnit.SECONDS))
       }
       catch {
         case e: Exception => {
@@ -110,7 +114,7 @@ object Helpers {
     }
     def headResult() = {
       try {
-        Await.result(observable.head(), Duration(10, TimeUnit.SECONDS))
+        Await.result(observable.head(), Duration(30, TimeUnit.SECONDS))
       }
       catch {
         case e: Exception => {
