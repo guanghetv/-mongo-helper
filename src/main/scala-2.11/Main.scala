@@ -6,22 +6,22 @@ object Main extends App {
 
   val mongo = MongoDB("10.8.8.8:27017", "test")
 
-  mongo.config(3, 2)
-  mongo.selectCollection("test")
+  // col
+  val test = mongo.getModel("test")
+//  test.config(batchSize = 3, seconds = 11)
 
   // test json(array)
   val json= """[{ "omg": "JSON source" }, {"omg": {"name": {"tt": "link..."}}}]"""
-  var res = mongo.batchInsert(json)
+  var res = test.batchInsert(json)
 
   // simulate seconds
-  Thread.sleep(2000)
+  Thread.sleep(2500)
   val json1= """[{ "omg": "JSON source" }, {"omg": {"name": {"tt": "link..."}}}]"""
-  res = mongo.batchInsert(json1)
 
-  println(s"res - $res")
+  res = test.batchInsert(json1)
 
   // check result
-  mongo.findPrint(exists("omg"))
+  test.findPrint(exists("omg"))
 }
 
 

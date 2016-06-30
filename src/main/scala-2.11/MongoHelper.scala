@@ -30,39 +30,46 @@ class MongoDB(connStr: String, database: String = "") {
 
 //  val client: MongoClient = MongoClient(s"mongodb://$connStr")
 
-//  val client: MongoClient = MongoClient(s"mongodb://$host:$port")
   val db = client.getDatabase(database)
-  var collection: MongoCollection[Document] = null
 
-  // config
-  var batchSize = 0
-  var seconds = 0
-  var opTime: Long = System.currentTimeMillis / 1000
+  def getModel(collection: String): CollectionModel = {
+     new CollectionModel(db, collection)
+  }
+}
 
-  // cache
+object MongoDB {
+  var instance: MongoDB = null
+  def apply(connStr: String, database: String) = {
+    if (instance == null) {
+      instance = new MongoDB(connStr, database)
+    }
+    instance
+  }
+}
+
+class CollectionModel(db: MongoDatabase, name: String) {
+  val collection = db.getCollection(name)
   var cache: List[Document] = List[Document]()
+  var opTime = 0L
+  var batchSize = 100
+  var seconds = 2
 
   def config(batchSize: Int, seconds: Int) = {
-    this.batchSize= batchSize
+    this.batchSize = batchSize
     this.seconds = seconds
-    this.opTime= System.currentTimeMillis / 1000 + seconds
-  }
-
-  def selectCollection(col: String): MongoCollection[Document] = {
-    collection = db.getCollection(col)
-    collection
+    opTime= System.currentTimeMillis / 1000 + seconds
   }
 
   def batchInsert(json: String) = {
     import Helpers._
 
-    val ch = parse(json).children
-    val docs: IndexedSeq[Document] = ch.map(d => Document(compact(render(d)))).toIndexedSeq
+    val children = parse(json).children
+    val docs: IndexedSeq[Document] = children.map(d => Document(compact(render(d)))).toIndexedSeq
     cache = cache ++ docs
 
-     // check
+    // check
     if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
-      collection.insertMany(cache).results()
+      this.collection.insertMany(cache).results()
 
       // clear cache
       cache = List[Document]()
@@ -74,16 +81,6 @@ class MongoDB(connStr: String, database: String = "") {
     import Helpers._
 
     collection.find(filter).printResults()
-  }
-}
-
-object MongoDB {
-  var instance: MongoDB = null
-  def apply(connStr: String, database: String) = {
-    if (instance == null) {
-      instance = new MongoDB(connStr, database)
-    }
-    instance
   }
 }
 
