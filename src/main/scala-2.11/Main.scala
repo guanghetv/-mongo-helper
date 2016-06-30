@@ -8,17 +8,23 @@ object Main extends App {
 
   // col
   val test = mongo.getModel("test")
-//  test.config(batchSize = 3, seconds = 11)
+  test.config(batchSize = 10, seconds = 10)
 
   // test json(array)
   val json= """[{ "omg": "JSON source" }, {"omg": {"name": {"tt": "link..."}}}]"""
   var res = test.batchInsert(json)
 
-  // simulate seconds
-  Thread.sleep(3000)
   val json1= """[{ "omg": "JSON source" }, {"omg": {"name": {"tt": "link..."}}}]"""
 
   res = test.batchInsert(json1)
+
+  val list = List[String]("""{"omg": "JSON source1"}""", """{ "omg": "JSON source2" }""")
+  val res1 = test.batchInsert(list)
+
+  // simulate seconds
+  Thread.sleep(2000)
+
+  test.flush()
 
   // check result
   test.findPrint(exists("omg"))

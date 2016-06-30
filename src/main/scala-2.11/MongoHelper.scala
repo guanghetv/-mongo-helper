@@ -64,11 +64,33 @@ class CollectionModel(db: MongoDatabase, name: String) {
     opTime= System.currentTimeMillis / 1000 + seconds
   }
 
+  def flush() = {
+    import Helpers._
+
+    collection.insertMany(cache).results()
+  }
+
   def batchInsert(json: String) = {
     import Helpers._
 
     val children = parse(json).children
     val docs: IndexedSeq[Document] = children.map(d => Document(compact(render(d)))).toIndexedSeq
+    cache = cache ++ docs
+
+    // check
+    if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
+      this.collection.insertMany(cache).results()
+
+      // clear cache
+      cache = List[Document]()
+      opTime = System.currentTimeMillis / 1000 + seconds
+    }
+  }
+
+  def batchInsert(list: List[String]) = {
+    import Helpers._
+
+    val docs: IndexedSeq[Document] = list.map(doc => Document(doc)).toIndexedSeq
     cache = cache ++ docs
 
     // check
