@@ -58,6 +58,7 @@ class CollectionModel(db: MongoDatabase, name: String) {
   var opTime = 0L
   var batchSize = 100
   var seconds = 2
+  private object lock
 
   def config(batchSize: Int, seconds: Int) = {
     this.batchSize = batchSize
@@ -71,16 +72,18 @@ class CollectionModel(db: MongoDatabase, name: String) {
     collection.insertMany(cache).results()
   }
 
-  def batchInsert(json: String) = {
+  def batchInsert(json: String) = lock.synchronized {
     import Helpers._
 
     val children = parse(json).children
     val docs: IndexedSeq[Document] = children.map(d => Document(compact(render(d)))).toIndexedSeq
+
     cache = cache ++ docs
 
     // check
     if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
       // clear cache
+
       val docs = cache
       cache = List[Document]()
 
