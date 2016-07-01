@@ -67,10 +67,11 @@ class CollectionModel(db: MongoDatabase, name: String) {
     opTime= System.currentTimeMillis / 1000 + seconds
   }
 
-  def flush() = {
+  def flush(): Unit = {
     import Helpers._
-
+    if (cache.length == 0) return
     collection.insertMany(cache).results()
+    cache = List[Document]()
   }
 
   def batchInsert(json: String) = lock.synchronized {

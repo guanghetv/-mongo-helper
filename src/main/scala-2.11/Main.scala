@@ -25,6 +25,7 @@ object Main extends App {
   Thread.sleep(2000)
 
   test.flush()
+  test.flush()
 
   // check result
   test.findPrint(exists("omg"))
