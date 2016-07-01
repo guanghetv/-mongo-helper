@@ -54,7 +54,8 @@ object MongoDB {
 
 class CollectionModel(db: MongoDatabase, name: String) {
   val collection = db.getCollection(name)
-  var cache: List[Document] = List[Document]()
+  var cache = List[Document]()
+
   var opTime = 0L
   var batchSize = 100
   var seconds = 2
@@ -98,12 +99,12 @@ class CollectionModel(db: MongoDatabase, name: String) {
     val docs: IndexedSeq[Document] = list.map(doc => Document(doc)).toIndexedSeq
     cache = cache ++ docs
 
-    // check
     if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
-      this.collection.insertMany(cache).results()
-
       // clear cache
+      val docx = cache
       cache = List[Document]()
+
+      this.collection.insertMany(docx).results()
       opTime = System.currentTimeMillis / 1000 + seconds
     }
   }
