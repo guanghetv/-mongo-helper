@@ -54,7 +54,9 @@ object MongoDB {
 
 class CollectionModel(db: MongoDatabase, name: String) {
   val collection = db.getCollection(name)
-  var cache: List[Document] = List[Document]()
+  var cache = new ThreadLocal[List[Document]]()
+  cache.set(List[Document]())
+
   var opTime = 0L
   var batchSize = 100
   var seconds = 2
@@ -68,7 +70,7 @@ class CollectionModel(db: MongoDatabase, name: String) {
   def flush() = {
     import Helpers._
 
-    collection.insertMany(cache).results()
+    collection.insertMany(cache.get()).results()
   }
 
   def batchInsert(json: String) = {
@@ -76,13 +78,15 @@ class CollectionModel(db: MongoDatabase, name: String) {
 
     val children = parse(json).children
     val docs: IndexedSeq[Document] = children.map(d => Document(compact(render(d)))).toIndexedSeq
-    cache = cache ++ docs
+    cache.set(cache.get() ++ docs)
+//    cache = cache ++ docs
+
 
     // check
-    if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
+    if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.get().length) {
       // clear cache
-      val docs = cache
-      cache = List[Document]()
+      val docs = cache.get()
+      cache.set(List[Document]())
 
       this.collection.insertMany(docs).results()
       opTime = System.currentTimeMillis / 1000 + seconds
@@ -93,14 +97,15 @@ class CollectionModel(db: MongoDatabase, name: String) {
     import Helpers._
 
     val docs: IndexedSeq[Document] = list.map(doc => Document(doc)).toIndexedSeq
-    cache = cache ++ docs
+//    cache = cache ++ docs
+    cache.set(cache.get() ++ docs)
 
-    // check
-    if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
-      this.collection.insertMany(cache).results()
-
+    if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.get().length) {
       // clear cache
-      cache = List[Document]()
+      val docsx = cache.get()
+      cache.set(List[Document]())
+
+      this.collection.insertMany(docsx).results()
       opTime = System.currentTimeMillis / 1000 + seconds
     }
   }
