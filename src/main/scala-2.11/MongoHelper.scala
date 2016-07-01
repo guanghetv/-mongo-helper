@@ -31,13 +31,14 @@ class MongoDB(connStr: String, database: String = "") {
     .build()
 
   val client: MongoClient = MongoClient(settings)
-
-//  val client: MongoClient = MongoClient(s"mongodb://$connStr")
-
   val db = client.getDatabase(database)
 
   def getModel(collection: String): CollectionModel = {
      new CollectionModel(db, collection)
+  }
+
+  def close() = {
+    client.close()
   }
 }
 
@@ -79,10 +80,11 @@ class CollectionModel(db: MongoDatabase, name: String) {
 
     // check
     if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
-      this.collection.insertMany(cache).results()
-
       // clear cache
+      val docs = cache
       cache = List[Document]()
+
+      this.collection.insertMany(docs).results()
       opTime = System.currentTimeMillis / 1000 + seconds
     }
   }

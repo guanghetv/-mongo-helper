@@ -28,6 +28,8 @@ object Main extends App {
 
   // check result
   test.findPrint(exists("omg"))
+
+  mongo.close()
 }
 
 
