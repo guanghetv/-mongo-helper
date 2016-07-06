@@ -30,8 +30,19 @@ class MongoDB(connStr: String, database: String = "") {
     .socketSettings(SocketSettings.builder().applyConnectionString(connectionString).build())
     .build()
 
-  val client: MongoClient = MongoClient(settings)
-  val db = client.getDatabase(database)
+  var client: MongoClient = null
+  var db: MongoDatabase = null
+
+  try {
+    client = MongoClient(settings)
+    db = client.getDatabase(database)
+  }
+  catch {
+    case e: Exception => {
+      e.printStackTrace()
+      throw e
+    }
+  }
 
   def getModel(collection: String): CollectionModel = {
      new CollectionModel(db, collection)

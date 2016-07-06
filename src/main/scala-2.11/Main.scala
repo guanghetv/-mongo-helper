@@ -8,7 +8,7 @@ object Main extends App {
 
   // col
   val test = mongo.getModel("test")
-  test.config(batchSize = 10, seconds = 10)
+//  test.config(batchSize = 10, seconds = 10)
 
   // test json(array)
   val json= """[{ "omg": "JSON source" }, {"omg": {"name": {"tt": "link..."}}}]"""
@@ -24,7 +24,6 @@ object Main extends App {
   // simulate seconds
   Thread.sleep(2000)
 
-  test.flush()
   test.flush()
 
   // check result
