@@ -14,6 +14,7 @@ import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.connection._
 import org.mongodb.scala.bson.codecs.DEFAULT_CODEC_REGISTRY
 
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
@@ -65,7 +66,7 @@ object MongoDB {
 
 class CollectionModel(db: MongoDatabase, name: String) {
   val collection = db.getCollection(name)
-  var cache = List[Document]()
+  var cache = ListBuffer[Document]()
 
   var opTime = 0L
   var batchSize = 100
@@ -81,27 +82,32 @@ class CollectionModel(db: MongoDatabase, name: String) {
   def flush(): Unit = {
     import Helpers._
     if (cache.length == 0) return
-    collection.insertMany(cache).results()
-    cache = List[Document]()
+    collection.insertMany(cache.toIndexedSeq).results()
+    cache.clear()
   }
 
-  def batchInsert(json: String) = lock.synchronized {
+  def insert(json: String) = {
+    import Helpers._
+
+    this.collection.insertOne(Document(json)).results()
+  }
+
+  def batchInsert(json: String) = {
     import Helpers._
 
     val children = parse(json).children
     val docs: IndexedSeq[Document] = children.map(d => Document(compact(render(d)))).toIndexedSeq
 
-    cache = cache ++ docs
+    lock.synchronized {
+      cache = cache ++ docs
 
-    // check
-    if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
-      // clear cache
+      // check
+      if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
+        this.collection.insertMany(cache.toIndexedSeq).results()
+        cache.clear()
 
-      val docs = cache
-      cache = List[Document]()
-
-      this.collection.insertMany(docs).results()
-      opTime = System.currentTimeMillis / 1000 + seconds
+        opTime = System.currentTimeMillis / 1000 + seconds
+      }
     }
   }
 
@@ -109,15 +115,16 @@ class CollectionModel(db: MongoDatabase, name: String) {
     import Helpers._
 
     val docs: IndexedSeq[Document] = list.map(doc => Document(doc)).toIndexedSeq
-    cache = cache ++ docs
 
-    if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
-      // clear cache
-      val docx = cache
-      cache = List[Document]()
+    lock.synchronized {
+      cache = cache ++ docs
 
-      this.collection.insertMany(docx).results()
-      opTime = System.currentTimeMillis / 1000 + seconds
+      if (opTime < (System.currentTimeMillis / 1000) || batchSize < cache.length) {
+        this.collection.insertMany(cache.toIndexedSeq).results()
+        cache.clear()
+
+        opTime = System.currentTimeMillis / 1000 + seconds
+      }
     }
   }
 
